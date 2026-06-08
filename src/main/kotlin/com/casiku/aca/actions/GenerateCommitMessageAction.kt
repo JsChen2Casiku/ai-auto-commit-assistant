@@ -24,8 +24,8 @@ import com.intellij.vcs.commit.CommitMessageUi
 import com.intellij.vcs.commit.CommitWorkflowUi
 
 class GenerateCommitMessageAction : DumbAwareAction(
-    "AI Commit Assistant",
-    "Generate commit message with AI Commit Assistant",
+    "Ai Auto Commit Assistant",
+    "Generate commit message with Ai Auto Commit Assistant",
     AcaIcons.AI_COMMIT,
 ) {
     init {
@@ -55,7 +55,7 @@ class GenerateCommitMessageAction : DumbAwareAction(
         val apiKey = ApiKeyStore.getApiKey(settings.currentChannelId)
         if (apiKey.isNullOrBlank() || settings.model.isBlank()) {
             AiCommitNotifier.warn(project, "请先配置 API key 和 model。")
-            ShowSettingsUtil.getInstance().showSettingsDialog(project, "AI Commit Assistant")
+            ShowSettingsUtil.getInstance().showSettingsDialog(project, "Ai Auto Commit Assistant")
             return
         }
 

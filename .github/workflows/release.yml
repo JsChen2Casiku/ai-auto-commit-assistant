@@ -1,0 +1,131 @@
+name: Build GitHub Release
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+    inputs:
+      publishMarketplace:
+        description: Publish the current plugin version to JetBrains Marketplace
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-release:
+    name: Build and publish release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Read plugin version
+        id: version
+        shell: bash
+        run: |
+          VERSION="$(grep '^pluginVersion=' gradle.properties | cut -d= -f2 | tr -d '\r' | xargs)"
+          if [ -z "$VERSION" ]; then
+            echo "pluginVersion is missing in gradle.properties" >&2
+            exit 1
+          fi
+
+          TAG="v$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Release tag: $TAG"
+
+      - name: Check existing tag and release
+        id: existing
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git fetch --tags --force
+
+          if git rev-parse -q --verify "refs/tags/$RELEASE_TAG" >/dev/null; then
+            echo "tag_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          HTTP_CODE="$(curl -L -s -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG")"
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "release_exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release $RELEASE_TAG already exists. Skipping."
+          elif [ "$HTTP_CODE" = "404" ]; then
+            echo "release_exists=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Unexpected GitHub API status while checking release: $HTTP_CODE" >&2
+            exit 1
+          fi
+
+      - name: Build plugin
+        if: steps.existing.outputs.release_exists != 'true' || github.event.inputs.publishMarketplace == 'true'
+        run: ./gradlew --no-daemon --no-configuration-cache clean buildPlugin
+
+      - name: Create git tag
+        if: steps.existing.outputs.release_exists != 'true' && steps.existing.outputs.tag_exists != 'true'
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$RELEASE_TAG" -m "Release $RELEASE_TAG"
+          git push origin "$RELEASE_TAG"
+
+      - name: Create GitHub Release
+        if: steps.existing.outputs.release_exists != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Ai Auto Commit Assistant ${{ steps.version.outputs.tag }}
+          files: build/distributions/*.zip
+          generate_release_notes: true
+          body: |
+            Automated release for Ai Auto Commit Assistant.
+
+            Plugin version: ${{ steps.version.outputs.version }}
+
+      - name: Publish to JetBrains Marketplace
+        if: steps.existing.outputs.release_exists != 'true' || github.event.inputs.publishMarketplace == 'true'
+        env:
+          PUBLISH_TOKEN: ${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
+          PUBLISH_CHANNEL: default
+          PUBLISH_HIDDEN: false
+        run: |
+          if [ -z "$PUBLISH_TOKEN" ]; then
+            echo "JETBRAINS_MARKETPLACE_TOKEN is not configured. Skipping Marketplace publish."
+            exit 0
+          fi
+
+          ./gradlew --no-daemon --no-configuration-cache publishPlugin

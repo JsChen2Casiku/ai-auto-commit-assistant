@@ -1,8 +1,8 @@
-# AI Commit Assistant
+# Ai Auto Commit Assistant
 
 [中文文档](README.zh-CN.md)
 
-AI Commit Assistant is a JetBrains IDE plugin that generates commit messages from the changes currently selected in the Commit tool window. It works with OpenAI-compatible chat completion APIs, supports multiple provider channels, streams generated text into the commit message input, and can hide model reasoning output before it reaches the final commit message.
+Ai Auto Commit Assistant is a JetBrains IDE plugin that generates commit messages from the changes currently selected in the Commit tool window. It works with OpenAI-compatible chat completion APIs, supports multiple provider channels, streams generated text into the commit message input, and can hide model reasoning output before it reaches the final commit message.
 
 The plugin is designed for everyday Git workflows in IntelliJ IDEA and other JetBrains IDEs that support the VCS Commit workflow.
 
@@ -67,7 +67,7 @@ build/distributions/
 
 ## Quick Start
 
-1. Open `Settings` -> `Tools` -> `AI Commit Assistant`.
+1. Open `Settings` -> `Tools` -> `Ai Auto Commit Assistant`.
 2. Fill in the channel configuration:
    - `Channel name`: a readable name for the provider, for example `OpenAI`, `DeepSeek`, or `Local`.
    - `Base URL`: the provider endpoint root, for example `https://api.openai.com` or `https://api.openai.com/v1`.
@@ -78,7 +78,7 @@ build/distributions/
 6. Apply the settings.
 7. Open the Commit tool window.
 8. Select the changes that should be included in the commit.
-9. Click `AI Commit Assistant` in the commit message action area.
+9. Click `Ai Auto Commit Assistant` in the commit message action area.
 10. Review the generated commit message before committing.
 
 The action overwrites the current commit message directly. There is no additional confirmation dialog.
@@ -340,7 +340,7 @@ To reduce truncation:
 
 The plugin includes migration logic for earlier IDs and setting file names. If configuration is still missing:
 
-- Open `Settings` -> `Tools` -> `AI Commit Assistant` once to trigger settings initialization.
+- Open `Settings` -> `Tools` -> `Ai Auto Commit Assistant` once to trigger settings initialization.
 - Verify that the installed plugin ID is `com.casiku.aca`.
 - Check whether the previous settings XML exists in the IDE config `options` directory.
 - Re-enter the API key if the operating system credential store does not allow migration.
@@ -370,7 +370,7 @@ Verify the plugin:
 ### Project Metadata
 
 - Plugin ID: `com.casiku.aca`
-- Plugin name: `AI Commit Assistant`
+- Plugin name: `Ai Auto Commit Assistant`
 - Vendor: `2Casiku`
 - Gradle group: `com.casiku`
 - Kotlin JVM plugin: `2.0.21`
@@ -393,6 +393,60 @@ src/main/resources/META-INF/plugin.xml       Plugin declaration
 src/main/resources/META-INF/pluginIcon.svg   Marketplace/plugin icon
 src/main/resources/icons/aiCommit.svg        Commit action icon
 ```
+
+## Automated Publishing
+
+This repository contains a GitHub Actions workflow at `.github/workflows/release.yml`.
+
+When code is pushed to `master` or `main`, the workflow reads `pluginVersion` from `gradle.properties`, builds the plugin, creates a GitHub Release with tag `v{pluginVersion}`, uploads the plugin ZIP, and publishes the same plugin build to JetBrains Marketplace if the Marketplace token is configured.
+
+### Required GitHub Secret
+
+Create a JetBrains Marketplace permanent token, then add it to the GitHub repository:
+
+```text
+Settings -> Secrets and variables -> Actions -> New repository secret
+```
+
+Secret name:
+
+```text
+JETBRAINS_MARKETPLACE_TOKEN
+```
+
+The workflow maps this secret to the Gradle environment variable:
+
+```text
+PUBLISH_TOKEN
+```
+
+The default Marketplace channel is:
+
+```text
+default
+```
+
+### Release Steps
+
+1. Update `pluginVersion` in `gradle.properties`.
+2. Commit the version change.
+3. Push to `master` or `main`.
+4. Wait for the `Build GitHub Release` workflow to finish.
+5. Check GitHub Releases and JetBrains Marketplace.
+
+Example:
+
+```powershell
+git add .
+git commit -m "chore: release v1.0.1"
+git push origin master
+```
+
+### Retry Marketplace Publishing
+
+If the GitHub Release already exists but Marketplace publishing failed, run the workflow manually from the GitHub Actions page and keep `Publish the current plugin version to JetBrains Marketplace` enabled.
+
+The manual run rebuilds the current `pluginVersion` and retries `publishPlugin` without requiring a new GitHub Release.
 
 ## License
 

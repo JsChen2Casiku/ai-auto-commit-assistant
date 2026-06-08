@@ -1,8 +1,8 @@
-# AI Commit Assistant
+# Ai Auto Commit Assistant
 
 [English](README.md)
 
-AI Commit Assistant 是一个 JetBrains IDE 插件，用于根据 Commit 工具窗口中当前勾选的 Git 变更自动生成提交信息。插件支持 OpenAI 兼容的 Chat Completions 接口，支持多渠道配置、模型列表拉取、流式写入提交输入框、思考过程屏蔽、模型上下文 token 自动获取，以及中文优先的设置体验。
+Ai Auto Commit Assistant 是一个 JetBrains IDE 插件，用于根据 Commit 工具窗口中当前勾选的 Git 变更自动生成提交信息。插件支持 OpenAI 兼容的 Chat Completions 接口，支持多渠道配置、模型列表拉取、流式写入提交输入框、思考过程屏蔽、模型上下文 token 自动获取，以及中文优先的设置体验。
 
 该插件面向 IntelliJ IDEA 以及其他支持 VCS Commit 工作流的 JetBrains IDE。
 
@@ -69,7 +69,7 @@ build/distributions/
 
 ## 快速开始
 
-1. 打开 `Settings` -> `Tools` -> `AI Commit Assistant`。
+1. 打开 `Settings` -> `Tools` -> `Ai Auto Commit Assistant`。
 2. 填写渠道配置：
    - `渠道名称`：用于识别当前服务商，例如 `OpenAI`、`DeepSeek`、`Local`。
    - `Base URL`：服务商接口根地址，例如 `https://api.openai.com` 或 `https://api.openai.com/v1`。
@@ -80,7 +80,7 @@ build/distributions/
 6. 点击应用保存设置。
 7. 打开 Commit 工具窗口。
 8. 勾选需要提交的变更。
-9. 点击提交信息区域中的 `AI Commit Assistant`。
+9. 点击提交信息区域中的 `Ai Auto Commit Assistant`。
 10. 检查生成的提交信息后再提交。
 
 触发生成时，插件会直接覆盖当前提交输入框内容，不再弹出二次确认。
@@ -342,7 +342,7 @@ https://example-provider.com/v1
 
 插件已经实现旧配置迁移。如果仍然没有恢复：
 
-- 打开一次 `Settings` -> `Tools` -> `AI Commit Assistant`，触发配置初始化。
+- 打开一次 `Settings` -> `Tools` -> `Ai Auto Commit Assistant`，触发配置初始化。
 - 确认当前安装的插件 ID 是 `com.casiku.aca`。
 - 检查 IDE config 的 `options` 目录中是否仍存在旧配置 XML。
 - 如果操作系统凭据存储不允许迁移，请重新输入 API Key。
@@ -372,7 +372,7 @@ https://example-provider.com/v1
 ### 项目信息
 
 - 插件 ID：`com.casiku.aca`
-- 插件名称：`AI Commit Assistant`
+- 插件名称：`Ai Auto Commit Assistant`
 - 作者：`2Casiku`
 - Gradle group：`com.casiku`
 - Kotlin JVM 插件版本：`2.0.21`
@@ -395,6 +395,64 @@ src/main/resources/META-INF/plugin.xml       插件声明
 src/main/resources/META-INF/pluginIcon.svg   插件图标
 src/main/resources/icons/aiCommit.svg        Commit 动作图标
 ```
+
+## 自动发布
+
+仓库中已经包含 GitHub Actions workflow：
+
+```text
+.github/workflows/release.yml
+```
+
+当代码推送到 `master` 或 `main` 后，workflow 会读取 `gradle.properties` 中的 `pluginVersion`，构建插件，创建 `v{pluginVersion}` 格式的 GitHub Release，上传插件 ZIP。如果已经配置 JetBrains Marketplace Token，还会把同一个构建产物自动发布到 JetBrains Marketplace。
+
+### 必需的 GitHub Secret
+
+先在 JetBrains Marketplace 创建 permanent token，然后添加到 GitHub 仓库：
+
+```text
+Settings -> Secrets and variables -> Actions -> New repository secret
+```
+
+Secret 名称必须是：
+
+```text
+JETBRAINS_MARKETPLACE_TOKEN
+```
+
+workflow 会把这个 Secret 映射为 Gradle 使用的环境变量：
+
+```text
+PUBLISH_TOKEN
+```
+
+默认发布渠道是：
+
+```text
+default
+```
+
+### 发布步骤
+
+1. 修改 `gradle.properties` 中的 `pluginVersion`。
+2. 提交版本号变更。
+3. 推送到 `master` 或 `main`。
+4. 等待 GitHub Actions 中的 `Build GitHub Release` 执行完成。
+5. 检查 GitHub Releases 和 JetBrains Marketplace。
+
+示例：
+
+```powershell
+git add .
+git commit -m "chore: release v1.0.1"
+git push origin master
+```
+
+### 重试 Marketplace 发布
+
+如果 GitHub Release 已经存在，但 JetBrains Marketplace 发布失败，可以进入 GitHub Actions 页面手动运行 `Build GitHub Release`，并保持 `Publish the current plugin version to JetBrains Marketplace` 开启。
+
+手动运行会重新构建当前 `pluginVersion`，并重试 `publishPlugin`，不需要创建新的 GitHub Release。
 
 ## License
 

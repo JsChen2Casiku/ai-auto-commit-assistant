@@ -6,9 +6,10 @@ import com.intellij.credentialStore.generateServiceName
 import com.intellij.ide.passwordSafe.PasswordSafe
 
 object ApiKeyStore {
-    private const val SERVICE_NAME = "AI Commit Assistant"
+    private const val SERVICE_NAME = "Ai Auto Commit Assistant"
     private const val ACCOUNT_NAME = "openai-compatible"
     private val legacyServiceNames = listOf(
+        "Ai Auto Commit Assistant",
         "AI Commit Assistant",
         "AI Commit Helper",
         "AI Commit Message",

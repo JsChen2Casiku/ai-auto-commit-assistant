@@ -5,7 +5,7 @@ import com.intellij.notification.NotificationType
 import com.intellij.openapi.project.Project
 
 object AiCommitNotifier {
-    private const val GROUP_ID = "AI Commit Assistant"
+    private const val GROUP_ID = "Ai Auto Commit Assistant"
 
     fun info(project: Project, content: String) {
         notify(project, content, NotificationType.INFORMATION)

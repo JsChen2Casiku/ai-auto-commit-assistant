@@ -44,4 +44,14 @@ intellijPlatform {
             ide("IC", "2024.3.6")
         }
     }
+
+    publishing {
+        token = providers.environmentVariable("PUBLISH_TOKEN")
+        channels = providers.environmentVariable("PUBLISH_CHANNEL")
+            .map { listOf(it.trim().ifBlank { "default" }) }
+            .orElse(listOf("default"))
+        hidden = providers.environmentVariable("PUBLISH_HIDDEN")
+            .map { it.toBooleanStrictOrNull() ?: false }
+            .orElse(false)
+    }
 }

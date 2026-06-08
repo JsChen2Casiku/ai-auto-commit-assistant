@@ -57,7 +57,7 @@ class AiCommitConfigurable : Configurable {
     private val streamingBox = JCheckBox()
     private val thinkingFilterBox = JCheckBox()
 
-    override fun getDisplayName(): String = "AI Commit Assistant"
+    override fun getDisplayName(): String = "Ai Auto Commit Assistant"
 
     override fun createComponent(): JComponent {
         val form = JPanel(GridBagLayout())
