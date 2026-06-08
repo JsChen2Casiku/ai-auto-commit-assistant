@@ -1,7 +1,31 @@
+# Gradle 构建缓存和临时目录，本地生成，不应提交
 .gradle/
 .gradle-temp/
 build/
 out/
+
+# IDEA 项目本地配置和 IntelliJ Platform Gradle Plugin 缓存，包含个人环境路径和下载产物
 .idea/
 *.iml
+.intellijPlatform/
+
+# Kotlin 编译器会话缓存，本地增量编译生成
+.kotlin/
+
+# 本机私有配置，可能包含本地路径、端口或密钥等敏感信息
+local.properties
+*.local
+
+# 插件构建产物和压缩包，可通过 Gradle 重新生成
 *.zip
+
+# 日志、JVM 崩溃转储和性能内存快照，体积大且只用于本地排查
+*.log
+hs_err_pid*
+replay_pid*
+*.hprof
+
+# 操作系统自动生成的目录展示和缩略图缓存文件
+.DS_Store
+Thumbs.db
+desktop.ini
