@@ -1,0 +1,42 @@
+<idea-plugin>
+    <id>com.casiku.aca</id>
+    <name>AI Commit Assistant</name>
+    <vendor>2Casiku</vendor>
+
+    <description><![CDATA[
+        <h3>AI Commit Assistant</h3>
+        <p>基于已选中的 Git 变更自动生成 Commit Message，支持 OpenAI 兼容接口。</p>
+        <ul>
+            <li>在 Commit 窗口一键生成提交信息</li>
+            <li>只读取当前勾选的变更内容</li>
+            <li>支持自定义渠道名称、Base URL、API Key 和模型</li>
+            <li>支持连接模型列表并选择可用模型</li>
+            <li>支持中文 / English 输出与多种提示词模板</li>
+            <li>API Key 使用 JetBrains PasswordSafe 本地安全存储</li>
+        </ul>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.vcs</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <applicationService serviceImplementation="com.casiku.aca.settings.AiCommitSettingsState"/>
+        <applicationConfigurable
+                id="aiCommitAssistant.settings"
+                parentId="tools"
+                displayName="AI Commit Assistant"
+                instance="com.casiku.aca.settings.AiCommitConfigurable"/>
+        <notificationGroup id="AI Commit Assistant" displayType="BALLOON"/>
+        <postStartupActivity implementation="com.casiku.aca.actions.AiCommitActionOrderStartupActivity"/>
+    </extensions>
+
+    <actions>
+        <action
+                id="AiCommitAssistant.GenerateCommitMessage"
+                class="com.casiku.aca.actions.GenerateCommitMessageAction"
+                text="AI Commit Assistant"
+                description="Generate commit message with AI Commit Assistant">
+            <add-to-group group-id="Vcs.MessageActionGroup" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>
