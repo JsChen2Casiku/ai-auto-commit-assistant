@@ -16,6 +16,9 @@ on:
 permissions:
   contents: write
 
+env:
+  GRADLE_OPTS: -Dorg.gradle.internal.http.connectionTimeout=120000 -Dorg.gradle.internal.http.socketTimeout=120000
+
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
@@ -90,7 +93,12 @@ jobs:
 
       - name: Build plugin
         if: steps.existing.outputs.release_exists != 'true' || github.event.inputs.publishMarketplace == 'true'
-        run: ./gradlew --no-daemon --no-configuration-cache clean buildPlugin
+        run: |
+          ./gradlew --no-daemon --no-configuration-cache clean buildPlugin || {
+            echo "::warning::Gradle build failed once. Retrying after 20 seconds..."
+            sleep 20
+            ./gradlew --no-daemon --no-configuration-cache clean buildPlugin
+          }
 
       - name: Create git tag
         if: steps.existing.outputs.release_exists != 'true' && steps.existing.outputs.tag_exists != 'true'
