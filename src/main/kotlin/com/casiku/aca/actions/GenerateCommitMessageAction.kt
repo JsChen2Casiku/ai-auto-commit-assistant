@@ -51,8 +51,9 @@ class GenerateCommitMessageAction : DumbAwareAction(
 
         val settingsService = AiCommitSettingsState.getInstance()
         settingsService.ensureChannels()
-        val settings = settingsService.state
-        val apiKey = ApiKeyStore.getApiKey(settings.currentChannelId)
+        val channel = settingsService.currentChannel()
+        val settings = settingsService.stateForCurrentChannel()
+        val apiKey = ApiKeyStore.getApiKey(channel.id)
         if (apiKey.isNullOrBlank() || settings.model.isBlank()) {
             AiCommitNotifier.warn(project, "请先配置 API key 和 model。")
             ShowSettingsUtil.getInstance().showSettingsDialog(project, "Ai Auto Commit Assistant")

@@ -111,6 +111,16 @@ class AiCommitSettingsState : PersistentStateComponent<AiCommitSettingsState.Sta
         return state.channels.first { it.id == state.currentChannelId }
     }
 
+    fun stateForCurrentChannel(): StateData {
+        ensureChannels()
+        val channel = currentChannel()
+        return state.copy(
+            channelName = channel.name,
+            baseUrl = channel.baseUrl,
+            model = channel.model,
+        )
+    }
+
     fun syncCurrentChannelToLegacyFields() {
         val channel = state.channels.firstOrNull { it.id == state.currentChannelId } ?: return
         state.channelName = channel.name

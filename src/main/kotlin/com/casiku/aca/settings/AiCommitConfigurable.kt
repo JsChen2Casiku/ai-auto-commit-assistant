@@ -178,6 +178,7 @@ class AiCommitConfigurable : Configurable {
         state.timeoutSeconds = timeoutSecondsSpinner.value as Int
         state.streaming = streamingBox.isSelected
         state.thinkingFilter = thinkingFilterBox.isSelected
+        ApplicationManager.getApplication().saveSettings()
     }
 
     override fun reset() {
