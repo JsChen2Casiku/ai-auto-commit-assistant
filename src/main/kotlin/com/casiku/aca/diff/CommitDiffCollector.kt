@@ -2,8 +2,10 @@ package com.casiku.aca.diff
 
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vcs.FilePath
 import com.intellij.openapi.vcs.changes.Change
 import com.intellij.openapi.vcs.changes.ContentRevision
+import java.nio.file.Files
 
 data class DiffContext(
     val fileSummary: String,
@@ -18,12 +20,13 @@ object CommitDiffCollector {
     fun collect(
         project: Project,
         changes: List<Change>,
+        unversionedFiles: List<FilePath>,
         contextTokens: Int,
         indicator: ProgressIndicator,
     ): DiffContext {
         indicator.checkCanceled()
-        val fileSummary = buildFileSummary(changes)
-        val diff = buildUnifiedDiff(changes, indicator)
+        val fileSummary = buildFileSummary(changes, unversionedFiles)
+        val diff = buildUnifiedDiff(project, changes, unversionedFiles, indicator)
         val safeContextTokens = contextTokens.coerceAtLeast(4_096)
         val diffTokenBudget = TokenBudgetCalculator.diffTokenBudget(safeContextTokens, fileSummary)
         val truncated = TextTokenEstimator.estimateTokens(diff) > diffTokenBudget
@@ -37,27 +40,61 @@ object CommitDiffCollector {
         return DiffContext(
             fileSummary = fileSummary,
             diffText = cappedDiff,
-            changeCount = changes.size,
+            changeCount = changes.size + unversionedFiles.size,
             truncated = truncated,
             contextTokens = safeContextTokens,
             diffTokenBudget = diffTokenBudget,
         )
     }
 
-    private fun buildUnifiedDiff(changes: List<Change>, indicator: ProgressIndicator): String =
+    private fun buildUnifiedDiff(
+        project: Project,
+        changes: List<Change>,
+        unversionedFiles: List<FilePath>,
+        indicator: ProgressIndicator,
+    ): String =
         buildString {
             changes.forEach { change ->
                 indicator.checkCanceled()
                 appendChange(change)
                 append('\n')
             }
+            unversionedFiles.forEach { file ->
+                indicator.checkCanceled()
+                appendUnversionedFile(project, file)
+                append('\n')
+            }
         }
 
-    private fun buildFileSummary(changes: List<Change>): String =
-        changes.joinToString(separator = "\n") { change ->
-            val path = change.afterRevision?.file?.path ?: change.beforeRevision?.file?.path ?: "unknown"
-            "- ${change.type.name}: $path"
+    private fun buildFileSummary(changes: List<Change>, unversionedFiles: List<FilePath>): String =
+        buildList {
+            addAll(changes.map { change ->
+                val path = change.afterRevision?.file?.path ?: change.beforeRevision?.file?.path ?: "unknown"
+                "- ${change.type.name}: $path"
+            })
+            addAll(unversionedFiles.map { file ->
+                "- UNVERSIONED: ${file.path}"
+            })
+        }.joinToString(separator = "\n")
+
+    private fun StringBuilder.appendUnversionedFile(project: Project, file: FilePath) {
+        val path = file.path
+        appendLine("diff -- UNVERSIONED /dev/null -> $path")
+        appendLine("--- /dev/null")
+        appendLine("+++ $path")
+
+        if (file.isDirectory) {
+            appendLine("[Directory content is not included]")
+            return
         }
+
+        val content = safeFileContent(project, file)
+        if (content == null) {
+            appendLine("[Binary or unavailable content]")
+            return
+        }
+        appendAdded(content)
+    }
 
     private fun StringBuilder.appendChange(change: Change) {
         val beforePath = change.beforeRevision?.file?.path ?: "/dev/null"
@@ -86,6 +123,21 @@ object CommitDiffCollector {
         } catch (_: Throwable) {
             null
         }
+
+    private fun safeFileContent(project: Project, file: FilePath): String? =
+        try {
+            val bytes = Files.readAllBytes(file.ioFile.toPath())
+            if (bytes.containsZeroByte()) {
+                null
+            } else {
+                String(bytes, file.getCharset(project))
+            }
+        } catch (_: Throwable) {
+            null
+        }
+
+    private fun ByteArray.containsZeroByte(): Boolean =
+        any { it.toInt() == 0 }
 
     private fun StringBuilder.appendAdded(content: String) {
         appendLimitedLines(content) { "+$it" }

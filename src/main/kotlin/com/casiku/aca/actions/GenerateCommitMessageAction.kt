@@ -18,6 +18,7 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vcs.FilePath
 import com.intellij.openapi.vcs.VcsDataKeys
 import com.intellij.openapi.vcs.changes.Change
 import com.intellij.vcs.commit.CommitMessageUi
@@ -61,7 +62,8 @@ class GenerateCommitMessageAction : DumbAwareAction(
         }
 
         val changes = workflowUi.getIncludedChanges()
-        if (changes.isEmpty()) {
+        val unversionedFiles = workflowUi.getIncludedUnversionedFiles()
+        if (changes.isEmpty() && unversionedFiles.isEmpty()) {
             AiCommitNotifier.warn(project, "没有可用于生成提交信息的已选变更。")
             return
         }
@@ -72,7 +74,7 @@ class GenerateCommitMessageAction : DumbAwareAction(
         ProgressManager.getInstance().run(
             object : Task.Backgroundable(project, "Generating AI Commit Message", true) {
                 override fun run(indicator: ProgressIndicator) {
-                    generate(project, changes, commitMessageUi, originalMessage, settings, settingsService.effectiveContextTokens(), apiKey, indicator)
+                    generate(project, changes, unversionedFiles, commitMessageUi, originalMessage, settings, settingsService.effectiveContextTokens(), apiKey, indicator)
                 }
             }
         )
@@ -81,6 +83,7 @@ class GenerateCommitMessageAction : DumbAwareAction(
     private fun generate(
         project: Project,
         changes: List<Change>,
+        unversionedFiles: List<FilePath>,
         commitMessageUi: CommitMessageUi,
         originalMessage: String,
         settings: AiCommitSettingsState.StateData,
@@ -92,13 +95,10 @@ class GenerateCommitMessageAction : DumbAwareAction(
         val loadingOverlay = CommitMessageGenerationOverlay(commitMessageUi)
         try {
             indicator.text = "Collecting selected changes"
-            val diffContext = CommitDiffCollector.collect(project, changes, contextTokens, indicator)
+            val diffContext = CommitDiffCollector.collect(project, changes, unversionedFiles, contextTokens, indicator)
             val prompt = PromptBuilder.build(settings, diffContext)
             val provider = OpenAiCompatibleProvider(settings, apiKey)
 
-            updateCommitMessage(commitMessageUi) {
-                setText("")
-            }
             loadingOverlay.startGenerating()
 
             indicator.text = "Generating commit message"
@@ -107,19 +107,19 @@ class GenerateCommitMessageAction : DumbAwareAction(
                 val preview = if (settings.thinkingFilter) {
                     CommitMessageSanitizer.sanitizePreview(buffer.toString())
                 } else {
-                    buffer.toString()
+                    CommitMessageSanitizer.normalize(buffer.toString())
                 }
                 if (settings.thinkingFilter && CommitMessageSanitizer.containsReasoning(buffer.toString())) {
                     loadingOverlay.showThinking()
                 }
-                if (preview.isNotBlank()) {
+                if (preview.isReadyForStreamingPreview()) {
                     loadingOverlay.stop()
                     updateCommitMessage(commitMessageUi) {
                         setText(preview)
                     }
                 }
             }.let {
-                if (settings.thinkingFilter) CommitMessageSanitizer.sanitize(it) else it.trim()
+                if (settings.thinkingFilter) CommitMessageSanitizer.sanitize(it) else CommitMessageSanitizer.normalize(it)
             }
 
             loadingOverlay.stop()
@@ -151,4 +151,7 @@ class GenerateCommitMessageAction : DumbAwareAction(
             commitMessageUi.update()
         }
     }
+
+    private fun String.isReadyForStreamingPreview(): Boolean =
+        isNotBlank() && (length >= 12 || contains('\n'))
 }

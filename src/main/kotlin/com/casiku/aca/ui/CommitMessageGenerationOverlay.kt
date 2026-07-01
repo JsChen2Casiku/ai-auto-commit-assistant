@@ -16,7 +16,6 @@ import java.awt.event.HierarchyEvent
 import java.awt.event.MouseAdapter
 import java.awt.geom.Arc2D
 import java.awt.geom.Ellipse2D
-import java.awt.geom.RoundRectangle2D
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.swing.JComponent
 import javax.swing.JLayeredPane
@@ -112,6 +111,8 @@ class CommitMessageGenerationOverlay(
     }
 
     private fun findTargetComponent(): JComponent? {
+        (commitMessageUi as? JComponent)?.let { return it }
+
         val editorField = runCatching {
             commitMessageUi.javaClass.getMethod("getEditorField").invoke(commitMessageUi) as? JComponent
         }.getOrNull()
@@ -206,7 +207,7 @@ class CommitMessageGenerationOverlay(
             try {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
                 paintMask(g2)
-                paintCard(g2)
+                paintContent(g2)
             } finally {
                 g2.dispose()
             }
@@ -215,28 +216,22 @@ class CommitMessageGenerationOverlay(
         private fun paintMask(g2: Graphics2D) {
             val base = UIUtil.getPanelBackground()
             val darkTheme = isDarkTheme()
-            g2.color = alpha(base, if (darkTheme) 218 else 232)
+            g2.color = alpha(base, if (darkTheme) 246 else 250)
             g2.fillRect(0, 0, width, height)
         }
 
-        private fun paintCard(g2: Graphics2D) {
+        private fun paintContent(g2: Graphics2D) {
             val padding = JBUI.scale(18)
-            val cardWidth = min(width - padding * 2, JBUI.scale(320)).coerceAtLeast(JBUI.scale(180))
-            val cardHeight = min(height - padding * 2, JBUI.scale(148)).coerceAtLeast(JBUI.scale(104))
-            val cardX = (width - cardWidth) / 2
-            val cardY = (height - cardHeight) / 2
-            val radius = JBUI.scale(20).toFloat()
-            val darkTheme = isDarkTheme()
-
-            g2.color = alpha(UIUtil.getPanelBackground(), if (darkTheme) 232 else 244)
-            g2.fill(RoundRectangle2D.Float(cardX.toFloat(), cardY.toFloat(), cardWidth.toFloat(), cardHeight.toFloat(), radius, radius))
-
-            val iconSize = min(JBUI.scale(64), cardHeight - JBUI.scale(64)).coerceAtLeast(JBUI.scale(44))
-            val centerX = cardX + cardWidth / 2
-            val iconCenterY = cardY + JBUI.scale(48)
+            val contentWidth = max(width - padding * 2, JBUI.scale(180))
+            val contentHeight = max(height - padding * 2, JBUI.scale(104))
+            val contentX = (width - contentWidth) / 2
+            val contentY = (height - contentHeight) / 2
+            val iconSize = min(JBUI.scale(64), contentHeight - JBUI.scale(64)).coerceAtLeast(JBUI.scale(44))
+            val centerX = contentX + contentWidth / 2
+            val iconCenterY = contentY + contentHeight / 2 - JBUI.scale(20)
             paintOrbitalLoader(g2, centerX.toDouble(), iconCenterY.toDouble(), iconSize.toDouble())
 
-            paintStatusText(g2, cardX, cardY, cardWidth, cardHeight)
+            paintStatusText(g2, contentX, contentY, contentWidth, contentHeight)
         }
 
         private fun paintOrbitalLoader(g2: Graphics2D, centerX: Double, centerY: Double, size: Double) {

@@ -45,6 +45,7 @@ object PromptBuilder {
             $thinkingRule
             Do not wrap the answer in Markdown.
             Do not invent changes that are not present in the diff.
+            If Gitmoji is requested, use real Unicode emoji characters, never shortcode text like :sparkles:.
         """.trimIndent()
 
         val user = """
